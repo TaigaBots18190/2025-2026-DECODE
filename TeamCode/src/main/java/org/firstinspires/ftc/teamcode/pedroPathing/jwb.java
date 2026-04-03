@@ -24,6 +24,8 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
+import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.opencv.ImageRegion;
 import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
@@ -45,6 +47,11 @@ import java.util.TreeMap;
 import java.util.Map;
 
 import kotlin.math.UMathKt;
+
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.LLStatus;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 
 @TeleOp(name="ColdJohnWickBlue")
@@ -116,6 +123,9 @@ public class jwb extends LinearOpMode {
     boolean intakeBool = false;
     double hoodPos = 0;
 
+    private MonotonicCubicSpline velocitySpline;
+    private MonotonicCubicSpline timeSpline;
+
 
     // Elapsed Times
     ElapsedTime rightTriggerDuration = new ElapsedTime();
@@ -149,12 +159,13 @@ public class jwb extends LinearOpMode {
     TreeMap<Double, Double> shotTimeTable = new TreeMap<>();
 
     //This is the table for figuring out how long the ball will be in the air from points on the field
-    public void initLookupTable() {
+    public void TimeLookupTable() {
         shotTimeTable.put(24.0, 0.35);
         shotTimeTable.put(48.0, 0.48);
         shotTimeTable.put(72.0, 0.62);
     }
     // Used to find the time in the air of the ball
+    /*
     public double getInterpolatedTime(double currentDistance){
         if (shotTimeTable.containsKey(currentDistance)) return shotTimeTable.get(currentDistance);
         // Getting the numbers that are right above and below the current distance
@@ -172,6 +183,12 @@ public class jwb extends LinearOpMode {
         double y2 = highEntry.getValue();
 
         return y1 + (x-x1) * (y2-y1) / (x2-x1);
+    }
+
+     */
+
+    public double getInterpolatedTime(double currentDistance){
+        return timeSpline.interpolate(currentDistance);
     }
 
 
@@ -192,7 +209,9 @@ public class jwb extends LinearOpMode {
         shooterVelocityTable.put(126.0, 1380.0);
     }
 
-    public double getInterpolatedShooterVelocity(double currentDistance){
+
+    /*
+    public double getInterpolateVelocity(double currentDistance){
         if (shooterVelocityTable.containsKey(currentDistance)) return shooterVelocityTable.get(currentDistance);
 
         Map.Entry < Double, Double> lowEntry = shooterVelocityTable.floorEntry(currentDistance);
@@ -211,6 +230,10 @@ public class jwb extends LinearOpMode {
 
     }
 
+     */
+    public double getInterpolatedVelocity(double currentDistance) {
+        return velocitySpline.interpolate(currentDistance);
+    }
 
 
 
@@ -650,8 +673,10 @@ public class jwb extends LinearOpMode {
     public void runOpMode() {
 
 
-        initLookupTable();
+        TimeLookupTable();
+        timeSpline = new MonotonicCubicSpline(shotTimeTable);
         shooterLookupTable();
+        velocitySpline = new MonotonicCubicSpline(shooterVelocityTable);
 
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(SharedClass.xPos, SharedClass.yPos, SharedClass.yaw));
@@ -839,7 +864,7 @@ public class jwb extends LinearOpMode {
 
 
             if (swit) {
-                double targetShooterVel = getInterpolatedShooterVelocity(distance);
+                double targetShooterVel = getInterpolatedVelocity(distance);
                 shooter1.setVelocity(targetShooterVel);
                 telemetry.addLine("Interpolated Shooter Velocity");
             } else {
@@ -1090,7 +1115,7 @@ public class jwb extends LinearOpMode {
             }
 
             //Main function to calculate out the hood angle made this by creating a regression of the if statements below
-            rawhoodAngle = -0.0122839 * filteredDistance + 1.35961;
+            rawhoodAngle = -0.0122839 * distance + 1.35961;
 
             // A quadratic regression as well : rawhoodAngle = 0.00182431 * Math.pow(filteredDistance, 2) - 0.0423136 * filteredDistance + 2.52135;
 
@@ -1107,6 +1132,31 @@ public class jwb extends LinearOpMode {
                 hoodExtension.setPosition(roundedhoodAngle);
                 lasthoodAngle = roundedhoodAngle;
             }
+
+
+            // RELOCALIZATION LOGIC
+
+            double realWorldHeading = Math.toDegrees(botHeading) + (turret.getCurrentPosition() / m);// First we give the camera the total heading by adding both the robots heading with the turrets heading since the turret can move independently from the robots chassis
+            double turretError = Math.abs(turret.getCurrentPosition()/m);// Then we find the degrees the turret is away from zero
+            limelight.updateRobotOrientation(realWorldHeading);// we update the heading of camera
+            LLResult result2 = limelight.getLatestResult();
+            if (result2 != null) {
+                if (result2.isValid() && turretError < 2.0 ) { // here we check if the turret is within two degrees of zero since we want to relocalize when the turret is facing straight
+                    Pose3D botpose = result2.getBotpose_MT2(); // this recalculates and gets the position of the robot
+                    if (botpose != null) {
+                        double Relocalized_x = botpose.getPosition().x * 39.37; // converts meters to inches
+                        double Relocalized_y = botpose.getPosition().y * 39.37;
+                        double Relocalized_heading = botHeading;
+                        telemetry.addData("MT2 Location:", "(" + Relocalized_x + ", " + Relocalized_y + "," + Relocalized_heading + ")");
+                        if (gamepad1.startWasPressed()) {
+                            follower.setPose(new Pose(Relocalized_x, Relocalized_y, Relocalized_heading)); // sets the new x y and heading of the robot
+                        }
+                    }
+                }
+            }
+
+
+
 
 
             telemetry.addData("Pattern", pattern);

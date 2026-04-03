@@ -32,7 +32,7 @@ import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
 import java.util.List;
 
 
-@Autonomous(name="JWBC")
+@Autonomous(name="JWBC15")
 public class JWBC15 extends OpMode {
 
     private Follower follower;
