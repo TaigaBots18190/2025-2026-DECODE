@@ -1,8 +1,29 @@
 package org.firstinspires.ftc.teamcode.pedroPathing; // make sure this aligns with class location
 
+
+
+
+
+
+
+
 import static org.firstinspires.ftc.teamcode.pedroPathing.Drawing.drawPoseHistory;
 
+
+
+
+
+
+
+
 import android.util.Size;
+
+
+
+
+
+
+
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierLine;
@@ -24,19 +45,52 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+
+
+
+
+
+
+
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.opencv.ImageRegion;
 import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
 
+
+
+
+
+
+
+
 import java.util.List;
 
 
-@Autonomous(name="JWBC")
+
+
+
+
+
+
+@Autonomous(name="finalJWBC")
 public class JWBC extends OpMode {
+
+
+
+
+
+
+
 
     private Follower follower;
     private Timer pathTimer, actionTimer, opmodeTimer;
+
+
+
+
+
+
 
 
     private int pathState;// Lowest (Third Set) of Artifacts from the Spike Mark.
@@ -44,16 +98,54 @@ public class JWBC extends OpMode {
     private final Pose ShootPose = new Pose(47.84530386740332, 95.66850828729281, Math.toRadians(134)); //Try to implement april tag locking for heading and
     private final Pose pickup1Pose = new Pose(44.57458563535911, 90.07734806629837, Math.toRadians(180));
     private final Pose pickup2Pose = new Pose(44.33149171270718, 65.674033149171294, Math.toRadians(180));
-    private final Pose pickup3Pose = new Pose(44.563535911602216, 43.005524861878456, Math.toRadians(180));
+    private final Pose pickup3Pose = new Pose(44.563535911602216, 41.005524861878456, Math.toRadians(180));
+    boolean control = false;
+    ElapsedTime gate = new ElapsedTime();
     private final double BlueHoodX = 14;
     private final double BlueHoodY = 129;
     double formula = 0;
 
 
-    private final Pose intake1Pose = new Pose(25.96132596685084, 90.060773480663, Math.toRadians(180));
-    private final Pose intake2Pose = new Pose(25.386740331491723, 65.83425414364642, Math.toRadians(180));
-    private final Pose intake3Pose = new Pose(25.41436464088398, 43.97237569060775, Math.toRadians(180));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private final Pose intake1Pose = new Pose(20.96132596685084, 90.060773480663, Math.toRadians(180));
+    private final Pose intake2Pose = new Pose(10.386740331491723, 65.83425414364642, Math.toRadians(180));
+    private final Pose intake3Pose = new Pose(13.41436464088398, 41.97237569060775, Math.toRadians(180));
     private final Pose endpose = new Pose(32.03314917127072, 72.18232044198896, Math.toRadians(90));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     private final Pose Ctrl1 = new Pose(65.1767955801105, 82.73480662983425);
@@ -61,34 +153,54 @@ public class JWBC extends OpMode {
     private final Pose Ctrl3 = new Pose(71.04972375690608, 30.70718232044198);
 
 
-    private final Pose CtrlGate = new Pose(61.12435743454239, 78.60429978380974);
+
+
+    private final Pose CtrlGate = new Pose(54.12435743454239, 78.60429978380974);
+
+
+
+
+
+
 
 
     private final double Bx = 0;
     private final double By = 144;
     private final double m = ((double) 742 / (double) 90);
     private Limelight3A limelight;
-    boolean motifDetected = false;
+    boolean detection = true;
     // Variable Initialization
     private DcMotor frontLeftMotor, frontRightMotor, backLeftMotor, backRightMotor, turret;
     private DcMotorEx shooter1;
     private Servo hoodExtension, indexer, hinge;
 
 
+
+
+
+
+
+
     private DcMotor intake;
 
 
-    private double increment = 0.2085;
-    private double pos1Intake = 0.6708; // .9
-    private double pos2Intake = 0.4695; // .7499
-    private double pos3Intake = 0.2651; // .5404
-    private double pos1Shoot = 0.9829; // .6444
-    private double pos2Shoot = 0.7803; // .4381
-    private double pos3Shoot = 0.5706; // .2331k≥≥≥≥≥≥≥≥≥≥≥≥
+
+
+
+
+
+
+    private double increment = SharedClass.increment;
+    private double pos1Intake = SharedClass.pos1Intake; // .9
+    private double pos2Intake = SharedClass.pos2Intake; // .7499
+    private double pos3Intake = SharedClass.pos3Intake; // .5404
+    private double pos1Shoot = SharedClass.pos1Shoot; // .6444
+    private double pos2Shoot = SharedClass.pos2Shoot; // .4381
+    private double pos3Shoot = SharedClass.pos3Shoot; // .2331k≥≥≥≥≥≥≥≥≥≥≥≥
     private double TurretPosition = 0; // may need to change
     private int turretExtremeLeft = 1700; // may need to change
     private int turretExtremeRight = -350; // may need to change
-    private String motif = "";
+    private String motif = "GPP";
     private String pattern = "GPP";
     private Boolean goingLeft = true;
     private boolean track = false;
@@ -109,7 +221,19 @@ public class JWBC extends OpMode {
     double hoodPos = 0;
 
 
+
+
+
+
+
+
     PredominantColorProcessor colorSensor;
+
+
+
+
+
+
 
 
     // Elapsed Times
@@ -124,6 +248,12 @@ public class JWBC extends OpMode {
     ElapsedTime turretInterval = new ElapsedTime();
 
 
+
+
+
+
+
+
     ElapsedTime xTime = new ElapsedTime();
     ElapsedTime bTime = new ElapsedTime();
     ElapsedTime yTime = new ElapsedTime();
@@ -135,7 +265,18 @@ public class JWBC extends OpMode {
 
 
 
-   private boolean flag = true;
+
+
+
+
+
+    private boolean flag = true;
+
+
+
+
+
+
 
 
     public static int count(String str, Character targetChar) {
@@ -147,55 +288,125 @@ public class JWBC extends OpMode {
         }
         return iter;
     }
-
-
     public void runIntake(boolean bool) {
         if (bool) {
             intake.setPower(1); // May need to change direction
         } else {
             intake.setPower(0);
         }
-    }
 
+
+
+
+
+
+
+
+    }
     public void turretTracker(boolean track) {
         if (!track) return;
 
-        if (motifDetected) {
+
+
+
+
+
+
+
+        if (detection) {
             double targetAngleDeg = ((Math.toDegrees(Math.atan((By - follower.getPose().getY()) / (Bx-follower.getPose().getX()))) % 180) + 180) % 180;
-            double robotHeadingDeg = Math.toDegrees(follower.getHeading());
+            double robotHeadingDeg = ((Math.toDegrees(follower.getHeading()) % 360) + 360) % 360;
             double turretAngleDeg = targetAngleDeg - (robotHeadingDeg - 90);
             turretPose = (int) (turretAngleDeg * m);
+
 
             if (turretPose > turretExtremeLeft || turretPose < turretExtremeRight) {
                 return;
             }
         } else {
-            // This will only execute once during first iteration of loop
             double targetAngleDeg = ((Math.toDegrees(Math.atan((144 - follower.getPose().getY()) / (72 - follower.getPose().getX()))) % 180) + 180) % 180;;
-            double robotHeadingDeg = Math.toDegrees(follower.getHeading());
+            double robotHeadingDeg = ((Math.toDegrees(follower.getHeading()) % 360) + 360) % 360;
             double turretAngleDeg = targetAngleDeg - (robotHeadingDeg - 90);
             turretPose = (int) (turretAngleDeg * m);
+
+
+
+
+
+
+
 
             if (turretPose > turretExtremeLeft || turretPose < turretExtremeRight) {
                 return;
             }
         }
 
+
+
+
+
+
+
+
         LLResult result1 = limelight.getLatestResult();
+
+
+
+
+
+
+
 
         double kP = 9;          // tune this
         double deadband = 2;    // degrees// encoder ticks per loop
 
+
+
+
+
+
+
+
         if (result1 != null && result1.isValid()) {
 
+
+
+
+
+
+
+
             telemetry.addData("Error", result1.getTx());
+
+
+
+
+
+
+
+
             double error = result1.getTx();
+
+
+
+
+
+
+
+
             if (Math.abs(error) < deadband) {
                 gamepad1.rumble(100);
                 gamepad2.rumble(100);
             }
-            if (!motifDetected) {
-                // This will only execute once during first iteration of loop and will determine the motif
+
+
+
+
+
+
+
+
+            if (!detection) {
                 List<LLResultTypes.FiducialResult> fiducials = result1.getFiducialResults();
                 if (!fiducials.isEmpty()) {
                     int tagId = fiducials.get(0).getFiducialId();
@@ -206,14 +417,45 @@ public class JWBC extends OpMode {
                     } else if (tagId == 23) {
                         motif = "PPG";
                     }
-                    //SharedClass.motif = motif;
+                    SharedClass.motif = motif;
                     limelight.pipelineSwitch(1);
-                    motifDetected = true;
+                    detection = true;
                 }
             }
+
+
+
+
+
+
+
+
         }
         turret.setTargetPosition(turretPose);
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public void automated_shoot(boolean launch) {
         char green = 'G';
@@ -235,7 +477,7 @@ public class JWBC extends OpMode {
                                 if (hingeTime.milliseconds() > 1175) {
                                     hinge.setPosition(0.09);
                                     flag = false;
-                                    if (hinge12.milliseconds() > 1350) {
+                                    if (hinge12.milliseconds() > 1450) {
                                         iteration += 1;
                                         hingeTime.reset();
                                         indexerTime.reset();
@@ -317,7 +559,7 @@ public class JWBC extends OpMode {
                                 if (hingeTime.milliseconds() > 1175) {
                                     hinge.setPosition(0.09);
                                     flag = false;
-                                    if (hinge12.milliseconds() > 1350) {
+                                    if (hinge12.milliseconds() > 1450) {
                                         iteration += 1;
                                         hingeTime.reset();
                                         indexerTime.reset();
@@ -391,7 +633,7 @@ public class JWBC extends OpMode {
                                 if (hingeTime.milliseconds() > 1175) {
                                     hinge.setPosition(0.09);
                                     flag = false;
-                                    if (hinge12.milliseconds() > 1350) {
+                                    if (hinge12.milliseconds() > 1450) {
                                         iteration += 1;
                                         hingeTime.reset();
                                         indexerTime.reset();
@@ -489,7 +731,7 @@ public class JWBC extends OpMode {
                             if (hingeTime.milliseconds() > 1175) {
                                 hinge.setPosition(0.09);
                                 flag = false;
-                                if (hinge12.milliseconds() > 1350) {
+                                if (hinge12.milliseconds() > 1450) {
                                     iteration += 1;
                                     hingeTime.reset();
                                     indexerTime.reset();
@@ -581,10 +823,13 @@ public class JWBC extends OpMode {
         telemetry.addData("Iteration:", iteration);
     }
 
+
     private final Pose Gate = new Pose(16.22651933701656,78,Math.toRadians(90));
+
 
     private PathChain scorePreload, grabPickup1, intakePickup1, HittingGate ,scorePickup1, grabPickup2, intakePickup2, scorePickup2, grabPickup3, intakePickup3, scorePickup3, ending;
     private PathChain end;
+
 
     public void buildPaths() {
         scorePreload = follower.pathBuilder()
@@ -593,10 +838,54 @@ public class JWBC extends OpMode {
                 .build();
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         grabPickup1 = follower.pathBuilder()
                 .addPath(new BezierCurve(ShootPose, Ctrl1, pickup1Pose))
                 .setLinearHeadingInterpolation(ShootPose.getHeading(), pickup1Pose.getHeading())
                 .build();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         intakePickup1 = follower.pathBuilder()
@@ -606,10 +895,38 @@ public class JWBC extends OpMode {
                 .build();
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         HittingGate = follower.pathBuilder()
-                .addPath(new BezierCurve(intake1Pose, CtrlGate ,Gate))
+                .addPath(new BezierCurve(intake1Pose, CtrlGate, Gate))
                 .setConstantHeadingInterpolation(Math.toRadians(90))
                 .build();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         scorePickup1 = follower.pathBuilder()
@@ -618,10 +935,38 @@ public class JWBC extends OpMode {
                 .build();
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         grabPickup2 = follower.pathBuilder()
                 .addPath(new BezierCurve(ShootPose, Ctrl2, pickup2Pose))
                 .setLinearHeadingInterpolation(ShootPose.getHeading(), pickup2Pose.getHeading())
                 .build();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         intakePickup2 = follower.pathBuilder()
@@ -631,18 +976,44 @@ public class JWBC extends OpMode {
                 .build();
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         scorePickup2 = follower.pathBuilder()
-                .addPath(new BezierLine(intake2Pose, ShootPose))
+                .addPath(new BezierCurve(intake2Pose, new Pose(65.1767955801105, 74.73480662983425), ShootPose))
                 .setLinearHeadingInterpolation(intake2Pose.getHeading(), ShootPose.getHeading())
                 .build();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         grabPickup3 = follower.pathBuilder()
                 .addPath(new BezierCurve(ShootPose, Ctrl3, pickup3Pose))
                 .setLinearHeadingInterpolation(ShootPose.getHeading(), pickup3Pose.getHeading())
                 .build();
-
-
         intakePickup3 = follower.pathBuilder()
                 .addPath(new BezierLine(pickup3Pose, intake3Pose))
                 .setConstantHeadingInterpolation(Math.toRadians(180))
@@ -650,10 +1021,54 @@ public class JWBC extends OpMode {
                 .build();
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         scorePickup3 = follower.pathBuilder()
                 .addPath(new BezierLine(intake3Pose, ShootPose))
                 .setLinearHeadingInterpolation(pickup3Pose.getHeading(), ShootPose.getHeading())
                 .build();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         ending = follower.pathBuilder()
@@ -663,11 +1078,40 @@ public class JWBC extends OpMode {
     }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // Setup a variable for each drive wheel to save power level for telemetry
     private boolean flag1 = true;
     private boolean flag2 = true;
     private boolean flag3 = true;
     private boolean flag4 = true;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public void autonomousPathUpdate() {
         switch (pathState) {
@@ -704,8 +1148,11 @@ public class JWBC extends OpMode {
                 break;
             case 5:
                 if (!follower.isBusy()) {
-                    follower.followPath(scorePickup1);
-                    setPathState(6);
+                    control = true;
+                    if (gate.milliseconds() > 500) {
+                        follower.followPath(scorePickup1);
+                        setPathState(6);
+                    }
                 }
                 break;
             case 6:
@@ -780,51 +1227,100 @@ public class JWBC extends OpMode {
         }
     }
 
+
+
+
+
+
+
+
     /** These change the states of the paths and actions. It will also reset the timers of the individual switches **/
     public void setPathState(int pState) {
         pathState = pState;
         pathTimer.resetTimer();
     }
 
+
+
+
+
+
+
+
     /** This is the main loop of the OpMode, it will run repeatedly after clicking "Play". **/
     @Override
     public void loop() {
-        // Set basic color parameters
+
+
+
+
+
+
+
+
         char green = 'G';
         char purple = 'P';
         char x1 = 'X';
 
-        // set position parameters
+
+
+
+
+
+
+
         SharedClass.xPos = follower.getPose().getX();
         SharedClass.yPos = follower.getPose().getY();
-        SharedClass.yaw = follower.getPose().getHeading();
-        SharedClass.motif = motif;
+        SharedClass.yaw = follower.getHeading();
         SharedClass.turretPose = turret.getCurrentPosition();
+        SharedClass.motif = motif;
 
-        hoodExtension.setPosition(0);
+
+
+
+
+
+
+
         // These loop the movements of the robot, these must be called continuously in order to work
         follower.update();
         autonomousPathUpdate();
 
-        //set the turret position and determine the motif, motif detection will happen only once
+
+
+
+
+
+
+
         turretTracker(true);
-        shooter1.setVelocity(500);
-        //shoot the balls
+        shooter1.setVelocity(1080);
         automated_shoot(shooting);
-        //start intake
         runIntake(true);
 
-        // Reset latch once ball leaves ROI
-        // start pattern = GPP
-        // This will be always execute because pattern doesn't contain X
+
+
+
+
+
+
+
+// Reset latch once ball leaves ROI
+
+
+
+
+
+
+
+
         if ((count(pattern, x1) == 0) && !centerControl && !motif.isEmpty()) {
-            //adjust indexer position for each loop - indexer position will always be pos1Shoot because pattern will always be GPP
             if (count(pattern, green) == 1 && count(pattern, purple) == 2) {
-                int motifGreenPosition = motif.indexOf(green);
-                int patternGreenPosition = pattern.indexOf(green);
-                if (motifGreenPosition == patternGreenPosition) {
+                int motifDetect = motif.indexOf(green);
+                int patternDetect = pattern.indexOf(green);
+                if (motifDetect == patternDetect) {
                     indexer.setPosition(pos1Shoot);
-                } else if (motifGreenPosition == (patternGreenPosition+1)%3) {
+                } else if (motifDetect == (patternDetect+1)%3) {
                     indexer.setPosition(pos3Shoot);
                 } else {
                     indexer.setPosition(pos2Shoot);
@@ -836,10 +1332,30 @@ public class JWBC extends OpMode {
             leftTrigger.reset();
         }
 
-        // This will be -1 at start as pattern = GPP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         indexerState = pattern.indexOf("X");
 
-        // This block will never execute as pattern will always be GPP
+
+
+
+
+
+
+
         if (!shooting && !shooting2 && !centerControl && indexerState != -1) {
             switch (indexerState) {
                 case 0:
@@ -854,13 +1370,13 @@ public class JWBC extends OpMode {
             }
             PredominantColorProcessor.Result result = colorSensor.getAnalysis();
             if (count(pattern, x1) > 0 && !shooting && !shooting2 && !centerControl) {
-                if (result.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_GREEN && colorTime.milliseconds() > 500) {
+                if (result.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_GREEN && colorTime.milliseconds() > 150) {
                     pattern =
                             pattern.substring(0, indexerState)
                                     + "G"
                                     + pattern.substring(indexerState + 1);
                     colorTime.reset();
-                } else if (result.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_PURPLE && colorTime.milliseconds() > 500) {
+                } else if (result.closestSwatch == PredominantColorProcessor.Swatch.ARTIFACT_PURPLE && colorTime.milliseconds() > 150) {
                     pattern =
                             pattern.substring(0, indexerState)
                                     + "P"
@@ -868,17 +1384,45 @@ public class JWBC extends OpMode {
                     colorTime.reset();
                 }
             }
+
+
+
+
+
+
+
+
         }
+
+
+        if (!control) {
+            gate.reset();
+        }
+
+
+
+
+
+
+
 
         // Feedback to Driver Hub for debugging
         telemetry.addData("path state", pathState);
         telemetry.addData("x", follower.getPose().getX());
         telemetry.addData("y", follower.getPose().getY());
-        telemetry.addData("heading", follower.getPose().getHeading());
+        telemetry.addData("heading", Math.toDegrees(follower.getHeading()));
         telemetry.addData("Pattern", pattern);
         telemetry.addData("Best Match:", colorSensor.getAnalysis().closestSwatch);
         telemetry.update();
+        hoodExtension.setPosition(0.11);
     }
+
+
+
+
+
+
+
 
     /** This method is called once at the init of the OpMode. **/
     @Override
@@ -887,17 +1431,38 @@ public class JWBC extends OpMode {
         opmodeTimer = new Timer();
         opmodeTimer.resetTimer();
 
+
+
+
+
+
+
+
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
         buildPaths();
+
+
+
+
+
+
+
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         telemetry.setMsTransmissionInterval(10);
         limelight.pipelineSwitch(0);
         limelight.start();
 
+
+
+
+
+
+
+
         colorSensor = new PredominantColorProcessor.Builder()
-                .setRoi(ImageRegion.asUnityCenterCoordinates(0.2, -0.5, 0.4, -0.8))
+                .setRoi(ImageRegion.asUnityCenterCoordinates(0.2, 1, 0.4, 0.9))
                 .setSwatches(
                         PredominantColorProcessor.Swatch.ARTIFACT_GREEN,
                         PredominantColorProcessor.Swatch.ARTIFACT_PURPLE,
@@ -907,22 +1472,57 @@ public class JWBC extends OpMode {
                         PredominantColorProcessor.Swatch.BLUE)
                 .build();
 
+
+
+
+
+
+
+
         VisionPortal portal = new VisionPortal.Builder()
                 .addProcessor(colorSensor)
                 .setCameraResolution(new Size(320, 240))
                 .setCamera(hardwareMap.get(WebcamName.class, "logi"))
                 .build();
 
+
+
+
+
+
+
+
         frontLeftMotor = hardwareMap.get(DcMotor.class, "flm");
         frontRightMotor = hardwareMap.get(DcMotor.class, "frm");
         backLeftMotor = hardwareMap.get(DcMotor.class, "blm");
         backRightMotor = hardwareMap.get(DcMotor.class, "brm");
 
+
+
+
+
+
+
+
         DcMotor light = hardwareMap.get(DcMotor.class, "l");
         light.setPower(1);
 
+
+
+
+
+
+
+
         frontLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
+
+
+
+
+
+
+
 
         turret = hardwareMap.get(DcMotor.class, "turret");
         turret.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -930,25 +1530,74 @@ public class JWBC extends OpMode {
         turret.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         turret.setTargetPosition(0);
         turret.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        turret.setPower(1);
+        turret.setPower(0.8);
+
+
+
+
+
+
+
 
         shooter1 = hardwareMap.get(DcMotorEx.class, "shoot1");
         shooter1.setDirection(DcMotorSimple.Direction.REVERSE);
-        shooter1.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(160, 0, 0, 15)); // (160, 15)
+        shooter1.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(110, 0, 0, 14.7219)); // (160, 15)
         hoodExtension = hardwareMap.get(Servo.class, "s1");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         indexer = hardwareMap.get(Servo.class, "index");
 
+
+
+
+
+
+
+
         hinge = hardwareMap.get(Servo.class, "h");
+
+
+
+
+
+
+
 
         intake = hardwareMap.get(DcMotor.class, "intake");
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
+
+
+
+
+
+
+
 
         IMU imu = hardwareMap.get(IMU.class, "imu");
         IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
                 RevHubOrientationOnRobot.UsbFacingDirection.UP));
         imu.initialize(parameters);
+
+
+
+
+
+
 
 
         boolean intakeToggle = false;
@@ -963,15 +1612,65 @@ public class JWBC extends OpMode {
         boolean deletion = false;
         int counting = 0;
 
+
+
+
+
+
+
+
         String manual_shoot = "";
+
+
+
+
+
+
+
 
         hinge.setPosition(0.09);
 
+
+        SharedClass.loadCalibration();
+
+
+        increment = SharedClass.increment;
+
+
+        pos1Intake = SharedClass.pos1Intake;
+        pos2Intake = SharedClass.pos2Intake;
+        pos3Intake = SharedClass.pos3Intake;
+        pos1Shoot = SharedClass.pos1Shoot;
+        pos2Shoot = SharedClass.pos2Shoot;
+        pos3Shoot = SharedClass.pos3Shoot;
+
+
+
+
+
+
+
+
+
+
     }
+
+
+
+
+
+
+
 
     /** This method is called continuously after Init while waiting for "play". **/
     @Override
     public void init_loop() {}
+
+
+
+
+
+
 
 
     /** This method is called once at the start of the OpMode.
@@ -982,9 +1681,39 @@ public class JWBC extends OpMode {
         setPathState(0);
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /** We do not use this because everything should automatically disable **/
     @Override
     public void stop() {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 }
 
