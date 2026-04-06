@@ -148,9 +148,17 @@ public class jwb extends LinearOpMode {
 
     //This is the table for figuring out how long the ball will be in the air from points on the field
     public void TimeLookupTable() {
-        shotTimeTable.put(24.0, 0.35);
-        shotTimeTable.put(48.0, 0.48);
-        shotTimeTable.put(72.0, 0.62);
+        shotTimeTable.put(40.0, 0.41);
+        shotTimeTable.put(45.7, 0.61);
+        shotTimeTable.put(59.0, 0.47);
+        shotTimeTable.put(82.4,0.51);
+        shotTimeTable.put(108.6,0.6);
+        shotTimeTable.put(128.0,0.71);
+        shotTimeTable.put(143.5,0.74);
+        shotTimeTable.put(153.0,0.76);
+        shotTimeTable.put(155.0,0.93);
+        shotTimeTable.put(167.0,0.91);
+
     }
     // Used to find the time in the air of the ball
     /*
@@ -185,16 +193,27 @@ public class jwb extends LinearOpMode {
     // Look at above comments to understand how this works
     //Look up table for shooter velocity
     public void shooterLookupTable(){
+        shooterVelocityTable.put(40.0,870.0);
+        shooterVelocityTable.put(45.7,1010.0);
         shooterVelocityTable.put(49.0, 950.0);
+        shooterVelocityTable.put(59.0,1050.0);
         shooterVelocityTable.put(67.0,1030.0);
         shooterVelocityTable.put(73.8, 1090.0);
         shooterVelocityTable.put(78.0,1090.0);
+        shooterVelocityTable.put(82.4,1200.0);
         shooterVelocityTable.put(89.0, 1130.0);
         shooterVelocityTable.put(97.0, 1170.0);
         shooterVelocityTable.put(107.0, 1250.0);
+        shooterVelocityTable.put(108.6,1320.0);
         shooterVelocityTable.put(113.0, 1280.0);
         shooterVelocityTable.put(119.0,1300.0);
         shooterVelocityTable.put(126.0, 1380.0);
+        shooterVelocityTable.put(143.5,1405.0);
+        shooterVelocityTable.put(153.0,1420.0);
+        shooterVelocityTable.put(155.0,1500.0);
+        shooterVelocityTable.put(167.0,1580.0);
+
+
     }
 
 
@@ -207,14 +226,15 @@ public class jwb extends LinearOpMode {
     TreeMap<Double, Double> hoodPositionTable = new TreeMap<>();
 
     public void HoodLookUpTable(){
-        hoodPositionTable.put(45.7, 1.0);
-        hoodPositionTable.put(59.0, 0.82);
-        hoodPositionTable.put(82.4, 0.48);
-        hoodPositionTable.put(108.6, 0.2);
+        hoodPositionTable.put(40.0,1.0);
+        hoodPositionTable.put(45.7, 0.82);
+        hoodPositionTable.put(59.0, 0.48);
+        hoodPositionTable.put(82.4, 0.2);
+        hoodPositionTable.put(108.6, 0.08);
         hoodPositionTable.put(143.5, 0.28);
-        hoodPositionTable.put(153.0,0.1);
-        hoodPositionTable.put(155.0,0.0);
-        hoodPositionTable.put(167.0,0.1);
+        hoodPositionTable.put(153.0,0.0);
+        hoodPositionTable.put(155.0,0.1);
+        hoodPositionTable.put(167.0,0.0);
 
 
     }
@@ -247,14 +267,26 @@ public class jwb extends LinearOpMode {
     }
     public void turretTracker(boolean track) {
         if (!track) return;
+        Pose RobotPose = follower.getPose();
+
+        double vx = follower.getVelocity().getXComponent();
+        double vy = follower.getVelocity().getYComponent();
+
+        double Airtime = getInterpolatedTime(distance);
+
+        double Virtual_Bx = Bx - (vx*Airtime);
+        double Virtual_By = By - (vy*Airtime);
 
 
 
 
-        double targetAngleDeg = ((Math.toDegrees(Math.atan((double) (By - follower.getPose().getY()) / (Bx-follower.getPose().getX()))) % 180) + 180) % 180;
+        double targetAngleDeg = ((Math.toDegrees(Math.atan((double) (Virtual_By - follower.getPose().getY()) / (Virtual_Bx-follower.getPose().getX()))) % 180) + 180) % 180;
         double robotHeadingDeg = ((Math.toDegrees(follower.getHeading()) % 360) + 360) % 360;
         double turretAngleDeg = targetAngleDeg - (robotHeadingDeg - 90);
-        turretPose = (int) (turretAngleDeg * m) + (int) offset;
+        turretPose = (int) ((((turretAngleDeg % 180) + 180) % 180) * m) + (int) offset;
+        while (turretAngleDeg > 180) turretAngleDeg -= 360;
+        while (turretAngleDeg < -180) turretAngleDeg += 360;
+
 
 
 
