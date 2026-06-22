@@ -20,6 +20,7 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.opencv.ImageRegion;
 import org.firstinspires.ftc.vision.opencv.PredominantColorProcessor;
@@ -970,7 +971,7 @@ public class jwb extends LinearOpMode {
             char purple = 'P';
             char x1 = 'X';
 
-
+            double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
 
 
@@ -1382,6 +1383,26 @@ public class jwb extends LinearOpMode {
                 }
 
 
+                // RELOCALIZATION LOGIC
+                //Set offset in the limelight ui
+                double realWorldHeading = Math.toDegrees(botHeading) + (turret.getCurrentPosition() / m);// First we give the camera the total heading by adding both the robots heading with the turrets heading since the turret can move independently from the robots chassis
+                double turretError = Math.abs(turret.getCurrentPosition()/m);// Then we find the degrees the turret is away from zero
+                limelight.updateRobotOrientation(realWorldHeading);// we update the heading of camera
+                LLResult result2 = limelight.getLatestResult();
+                if (result2 != null) {
+                    if (result2.isValid() && turretError < 2.0 ) { // here we check if the turret is within two degrees of zero since we want to relocalize when the turret is facing straight
+                        Pose3D botpose = result2.getBotpose_MT2(); // this recalculates and gets the position of the robot
+                        if (botpose != null) {
+                            double Relocalized_x = botpose.getPosition().x * 39.37; // converts meters to inches
+                            double Relocalized_y = botpose.getPosition().y * 39.37;
+                            double Relocalized_heading = botHeading;
+                            telemetry.addData("MT2 Location:", "(" + Relocalized_x + ", " + Relocalized_y + "," + Relocalized_heading + ")");
+                            if (gamepad1.startWasPressed()) {
+                                follower.setPose(new Pose(Relocalized_x, Relocalized_y, Relocalized_heading)); // sets the new x y and heading of the robot
+                            }
+                        }
+                    }
+                }
 
 
 
