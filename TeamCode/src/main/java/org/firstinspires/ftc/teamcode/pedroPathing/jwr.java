@@ -42,7 +42,8 @@ import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.Pose;
 
-
+import java.util.Map;
+import java.util.TreeMap;
 
 
 @TeleOp(name="ColdJohnWickRed")
@@ -52,7 +53,7 @@ public class jwr extends LinearOpMode {
 
 
     private Follower follower;
-    private final double Bx = 0;
+    private final double Bx = 144;
     private final double By = 144;
     private double distance;
     private final double m = ((double) 742 / (double) 90);
@@ -77,6 +78,16 @@ public class jwr extends LinearOpMode {
 
 
     private DcMotor intake;
+
+    // All variable related to hood angle
+
+    // All variables related to hood angle calculation
+    private double filteredDistance = 0.0;
+    private double Alpha = 0.35;
+    private boolean hoodangleINT = false;
+    private double rawhoodAngle = 0.0;
+    private double roundedhoodAngle = 0.0;
+    private double lasthoodAngle = 0.0;
 
 
 
@@ -142,6 +153,73 @@ public class jwr extends LinearOpMode {
 
     private boolean flag = true;
 
+    // Start of making look up tables
+    TreeMap<Double, Double> shotTimeTable = new TreeMap<>();
+
+    //This is the table for figuring out how long the ball will be in the air from points on the field
+    public void initLookupTable() {
+        shotTimeTable.put(24.0, 0.35);
+        shotTimeTable.put(48.0, 0.48);
+        shotTimeTable.put(72.0, 0.62);
+    }
+    // Used to find the time in the air of the ball
+    public double getInterpolatedTime(double currentDistance){
+        if (shotTimeTable.containsKey(currentDistance)) return shotTimeTable.get(currentDistance);
+        // Getting the numbers that are right above and below the current distance
+        Map.Entry<Double, Double> lowEntry = shotTimeTable.floorEntry(currentDistance); // Floor entry will first search for all values that are less than or equal to current distance, then it will find the greatest value out of that bunch
+        Map.Entry<Double, Double> highEntry = shotTimeTable.ceilingEntry(currentDistance); // Ceiling entry will first search for all values that are greater than or equal to current distance, then it will return the smallest value out of that bunch
+
+        // Used to handle if the robot is closer than our
+        if (lowEntry == null) return highEntry.getValue(); // If for example our robot is at 5 inches, floor entry will try to find values that are less than or equal to 5 in the table but nothing is there so it returns null. Ceilling entry will search for all numbers greater than 5 in the table, and return the smallest one
+        if (highEntry == null) return lowEntry.getValue(); // If our robot is at 100 inches ceilling enrty will try to find values that are greater than or equal to 100 but that isn't possible so floor entry will find values that are lower than or equal to 100 and return the largest one.
+
+        double x = currentDistance;
+        double x1 = lowEntry.getKey();
+        double y1 = lowEntry.getValue();
+        double x2 = highEntry.getKey();
+        double y2 = highEntry.getValue();
+
+        return y1 + (x-x1) * (y2-y1) / (x2-x1);
+    }
+
+
+    TreeMap<Double, Double> shooterVelocityTable = new TreeMap<>();
+
+    // Look at above comments to understand how this works
+    //Look up table for shooter velocity
+    public void shooterLookupTable(){
+        shooterVelocityTable.put(49.0, 950.0);
+        shooterVelocityTable.put(67.0,1030.0);
+        shooterVelocityTable.put(73.8, 1090.0);
+        shooterVelocityTable.put(78.0,1090.0);
+        shooterVelocityTable.put(89.0, 1130.0);
+        shooterVelocityTable.put(97.0, 1170.0);
+        shooterVelocityTable.put(107.0, 1250.0);
+        shooterVelocityTable.put(113.0, 1280.0);
+        shooterVelocityTable.put(119.0,1300.0);
+        shooterVelocityTable.put(126.0, 1380.0);
+    }
+
+    public double getInterpolatedShooterVelocity(double currentDistance){
+        if (shooterVelocityTable.containsKey(currentDistance)) return shooterVelocityTable.get(currentDistance);
+
+        Map.Entry < Double, Double> lowEntry = shooterVelocityTable.floorEntry(currentDistance);
+        Map.Entry<Double, Double> highEntry = shooterVelocityTable.ceilingEntry(currentDistance);
+
+        if (lowEntry == null) return highEntry.getValue();
+        if (highEntry == null) return lowEntry.getValue();
+
+        double x = currentDistance;
+        double x1 = lowEntry.getKey();
+        double y1 = lowEntry.getValue();
+        double x2 = highEntry.getKey();
+        double y2 = highEntry.getValue();
+
+        return y1 + (x-x1) * (y2-y1) / (x2-x1);
+
+    }
+
+
 
 
 
@@ -167,14 +245,23 @@ public class jwr extends LinearOpMode {
     }
     public void turretTracker(boolean track) {
         if (!track) return;
+        Pose RobotPose = follower.getPose();
+
+        double vx = follower.getVelocity().getXComponent();
+        double vy = follower.getVelocity().getYComponent();
+
+        double Airtime = getInterpolatedTime(distance);
+
+        double Virtual_Bx = Bx - (vx*Airtime);
+        double Virtual_By = By - (vy*Airtime);
 
 
 
-
-        double targetAngleDeg = ((Math.toDegrees(Math.atan((144 - follower.getPose().getY()) / (144-follower.getPose().getX()))) % 180) + 180) % 180;
+        double targetAngleRad = Math.atan2(Virtual_By - RobotPose.getY(), Virtual_Bx - RobotPose.getX());
+        double targetAngleDeg = Math.toDegrees(targetAngleRad);
         double robotHeadingDeg = Math.toDegrees(follower.getHeading());
         double turretAngleDeg = targetAngleDeg - (robotHeadingDeg - 90);
-        turretPose = (int) (turretAngleDeg * m);
+        turretPose = (int) ((((turretAngleDeg % 180) + 180) % 180) * m);
 
 
 
@@ -187,32 +274,10 @@ public class jwr extends LinearOpMode {
 
 
         LLResult result1 = limelight.getLatestResult();
-
-
-
-
-        double kP = 9;          // tune this
-        double deadband = 1;    // degrees// encoder ticks per loop
-
-
-
-
         if (result1 != null && result1.isValid()) {
-
-
-
-
             telemetry.addData("Error", result1.getTx());
-
-
-
-
             double error = result1.getTx();
-
-
-
-
-            if (Math.abs(error) < deadband) {
+            if (Math.abs(error) < 1.0) {
                 gamepad1.rumble(100);
                 gamepad2.rumble(100);
             }
@@ -221,7 +286,7 @@ public class jwr extends LinearOpMode {
 
 
         }
-        turret.setTargetPosition(turretPose-SharedClass.turretPose);
+        turret.setTargetPosition(turretPose- SharedClass.turretPose);
     }
 
 
@@ -904,16 +969,16 @@ public class jwr extends LinearOpMode {
 
 
             if (swit) {
-                shooter1.setVelocity(1500);
-                telemetry.addLine("High Vel");
+                double targetShooterVel = getInterpolatedShooterVelocity(distance);
+                shooter1.setVelocity(targetShooterVel);
+                telemetry.addLine("Interpolated Shooter Velocity");
             } else {
                 shooter1.setVelocity(1170);
                 telemetry.addLine("Low Vel");
             }
 
 
-
-
+            /*
             hoodExtension.setPosition(hoodPos);
             if (gamepad1.dpad_left) {
                 hoodPos -= 0.05;
@@ -921,6 +986,8 @@ public class jwr extends LinearOpMode {
             if (gamepad1.dpad_right) {
                 hoodPos += 0.05;
             }
+
+             */
 
 
 
@@ -1181,6 +1248,41 @@ public class jwr extends LinearOpMode {
                             colorTime.reset();
                         }
                     }
+                }
+
+                // y=-0.0122839x+1.35961
+                // y=0.000182431x^{2}-0.0423136x+2.52135
+
+                // Proposed Method of calculating hood Angle:
+
+                // Doing this to prevent a large jump of values
+                if(!hoodangleINT){
+                    hoodExtension.setPosition(0.1);
+                    filteredDistance = distance;
+                    hoodangleINT = true;
+                }
+                else {
+                    //This is code to average out the old distance and the new distance to prevent noisy data into the function
+                    filteredDistance = Alpha * distance + (1 - Alpha) * filteredDistance;
+                }
+
+                //Main function to calculate out the hood angle made this by creating a regression of the if statements below
+                rawhoodAngle = -0.0122839 * filteredDistance + 1.35961;
+
+                // A quadratic regression as well : rawhoodAngle = 0.00182431 * Math.pow(filteredDistance, 2) - 0.0423136 * filteredDistance + 2.52135;
+
+
+
+                //Use this to prevent the servo position from going out of bounds
+                rawhoodAngle = Math.max(0.0, Math.min(1.0, rawhoodAngle));
+
+                //Round the hood angle to a reasonable decimal so the servo doesn't have to be very specific
+                roundedhoodAngle = Math.round(rawhoodAngle * 100) /100;
+
+                //Here is a check to see if the servo actually moved more than 0.05 in position then only change the hood
+                if(Math.abs(roundedhoodAngle - lasthoodAngle) > 0.05){
+                    hoodExtension.setPosition(roundedhoodAngle);
+                    lasthoodAngle = roundedhoodAngle;
                 }
 
 

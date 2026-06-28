@@ -56,6 +56,7 @@ public class SensorGoBildaPinpoint extends OpMode {
 
         // Set the location of the robot - this should be the place you are starting the robot from
         pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, 0, 0, AngleUnit.DEGREES, 0));
+
     }
 
     @Override
@@ -72,6 +73,7 @@ public class SensorGoBildaPinpoint extends OpMode {
         telemetry.addData("X coordinate (IN)", pose2D.getX(DistanceUnit.INCH));
         telemetry.addData("Y coordinate (IN)", pose2D.getY(DistanceUnit.INCH));
         telemetry.addData("Heading angle (DEGREES)", pose2D.getHeading(AngleUnit.DEGREES));
+
     }
 
     public void configurePinpoint(){
